@@ -1,25 +1,36 @@
-## This will get the next garbage collection dates from Telge Återvinning .
-##
-## You need to set your address in the resource template section.
-## The full address including the code such as this example: 'Storgatan 9A, Storstaden'
-##
-
 sensor:
-
   - platform: rest
     name: Sophämtning kärl 1
-    resource_template: https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode()}}
+    resource_template: "https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode() }}"
     method: GET
-    value_template: '{{ as_timestamp(value_json["RhServices"][0]["NextWastePickup"].title()) | timestamp_local() }}'
-    scan_interval: 43200 # Refresh values every 12 hours
+    value_template: >-
+      {% set pickups = value_json['Calendar.CalendarItemBasic'] | selectattr("ContainerId", "equalto", "14A") | map(attribute="Date") | list %}
+      {% if pickups %}
+        {{ pickups | min }}
+      {% else %}
+        unknown
+      {% endif %}
+    scan_interval: 43200 # Uppdatera var 12:e timme
     device_class: timestamp
-    json_attributes_path: "$.RhServices[1]"
+    json_attributes_path: "$.Calendar.CalendarItemBasic"
     json_attributes:
-      - NextWastePickup
+      - Date
+      - Title
 
-  - platform: template
-    sensors:
-      sophamtning_karl_2:
-        value_template: '{{ as_timestamp(states.sensor.sophamtning_karl_1.attributes["NextWastePickup"]) | timestamp_local() }}'
-        friendly_name: Sophämtning kärl 2
-        device_class: timestamp
+  - platform: rest
+    name: Sophämtning kärl 2
+    resource_template: "https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode() }}"
+    method: GET
+    value_template: >-
+      {% set pickups = value_json['Calendar.CalendarItemBasic'] | selectattr("ContainerId", "equalto", "15A") | map(attribute="Date") | list %}
+      {% if pickups %}
+        {{ pickups | min }}
+      {% else %}
+        unknown
+      {% endif %}
+    scan_interval: 43200
+    device_class: timestamp
+    json_attributes_path: "$.Calendar.CalendarItemBasic"
+    json_attributes:
+      - Date
+      - Title
