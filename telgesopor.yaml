@@ -1,0 +1,25 @@
+## This will get the next garbage collection dates from Telge Återvinning .
+##
+## You need to set your address in the resource template section.
+## The full address including the code such as this example: 'Storgatan 9A, Storstaden'
+##
+
+sensor:
+
+  - platform: rest
+    name: Sophämtning kärl 1
+    resource_template: https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode()}}
+    method: GET
+    value_template: '{{ as_timestamp(value_json["RhServices"][0]["NextWastePickup"].title()) | timestamp_local() }}'
+    scan_interval: 43200 # Refresh values every 12 hours
+    device_class: timestamp
+    json_attributes_path: "$.RhServices[1]"
+    json_attributes:
+      - NextWastePickup
+
+  - platform: template
+    sensors:
+      sophamtning_karl_2:
+        value_template: '{{ as_timestamp(states.sensor.sophamtning_karl_1.attributes["NextWastePickup"]) | timestamp_local() }}'
+        friendly_name: Sophämtning kärl 2
+        device_class: timestamp
