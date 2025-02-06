@@ -1,36 +1,53 @@
+input_text:
+  garbage_collection_address:
+    name: Sophamtningsadress
+    initial: "VÄGNAMN 1, ORT"
+
 sensor:
   - platform: rest
-    name: Sophämtning kärl 1
-    resource_template: "https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode() }}"
+    name: Sophämtning Kärl 1
+    resource_template: >
+      {% set address = states('input_text.garbage_collection_address') %}
+      https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ address | urlencode }}
     method: GET
+    headers:
+      Accept: "application/json"
     value_template: >-
-      {% set pickups = value_json['Calendar.CalendarItemBasic'] | selectattr("ContainerId", "equalto", "14A") | map(attribute="Date") | list %}
-      {% if pickups %}
-        {{ pickups | min }}
+      {% set today = now().timestamp() %}
+      {% set pickups = value_json | selectattr("containerId", "equalto", "14A") | map(attribute="date") | list %}
+      {% set future_pickups = pickups | map("as_timestamp") | select("ge", today) | list %}
+      {% if future_pickups %}
+        {{ future_pickups | min | timestamp_local }}
       {% else %}
-        unknown
+        "none"
       {% endif %}
-    scan_interval: 43200 # Uppdatera var 12:e timme
+    scan_interval: 43200  # Uppdateras var 12:e timme
     device_class: timestamp
-    json_attributes_path: "$.Calendar.CalendarItemBasic"
     json_attributes:
-      - Date
-      - Title
+      - date
+      - containerId
+      - title
 
   - platform: rest
-    name: Sophämtning kärl 2
-    resource_template: "https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ 'Streetname 1, City' | urlencode() }}"
+    name: Sophämtning Kärl 2
+    resource_template: >
+      {% set address = states('input_text.garbage_collection_address') %}
+      https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ address | urlencode }}
     method: GET
+    headers:
+      Accept: "application/json"
     value_template: >-
-      {% set pickups = value_json['Calendar.CalendarItemBasic'] | selectattr("ContainerId", "equalto", "15A") | map(attribute="Date") | list %}
-      {% if pickups %}
-        {{ pickups | min }}
+      {% set today = now().timestamp() %}
+      {% set pickups = value_json | selectattr("containerId", "equalto", "15A") | map(attribute="date") | list %}
+      {% set future_pickups = pickups | map("as_timestamp") | select("ge", today) | list %}
+      {% if future_pickups %}
+        {{ future_pickups | min | timestamp_local }}
       {% else %}
-        unknown
+        "none"
       {% endif %}
-    scan_interval: 43200
+    scan_interval: 43200  # Uppdateras var 12:e timme
     device_class: timestamp
-    json_attributes_path: "$.Calendar.CalendarItemBasic"
     json_attributes:
-      - Date
-      - Title
+      - date
+      - containerId
+      - title
