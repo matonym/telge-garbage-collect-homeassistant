@@ -2,52 +2,172 @@ input_text:
   garbage_collection_address:
     name: Sophamtningsadress
     initial: "VÄGNAMN 1, ORT"
-
-sensor:
-  - platform: rest
-    name: Sophämtning Kärl 1
-    resource_template: >
+    
+rest:
+  - resource_template: >
       {% set address = states('input_text.garbage_collection_address') %}
       https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ address | urlencode }}
+    scan_interval: 43200
     method: GET
-    headers:
-      Accept: "application/json"
-    value_template: >-
-      {% set today = now().timestamp() %}
-      {% set pickups = value_json | selectattr("containerId", "equalto", "14A") | map(attribute="date") | list %}
-      {% set future_pickups = pickups | map("as_timestamp") | select("ge", today) | list %}
-      {% if future_pickups %}
-        {{ future_pickups | min | timestamp_local }}
-      {% else %}
-        "none"
-      {% endif %}
-    scan_interval: 43200  # Uppdateras var 12:e timme
-    device_class: timestamp
-    json_attributes:
-      - date
-      - containerId
-      - title
+    sensor:
+      - name: "Sophämtning Datum"
+        unique_id: sophamtning_datum
+        value_template: >-
+          {% set json_data = value_json %}
+          {% if json_data is not defined or json_data | length == 0 %}
+            none
+          {% else %}
+            {% set today = now().strftime('%Y-%m-%d') | replace("-", "") | int %}
+            {% set future_pickups = json_data 
+              | selectattr("date", "defined") 
+              | map(attribute="date") 
+              | map("string")  
+              | map("truncate", 10, True, "")  
+              | map("replace", "-", "")  
+              | map("int")  
+              | select("ge", today) 
+              | list 
+            %}
+            {% if future_pickups %}
+              {% set future_pickup = future_pickups[0] | string %}
+              {% set formatted_date = future_pickup[:4] + "-" + future_pickup[4:6] + "-" + future_pickup[6:8] %}
+              {{ formatted_date }}
+            {% else %}
+              none
+            {% endif %}
+          {% endif %}
 
-  - platform: rest
-    name: Sophämtning Kärl 2
-    resource_template: >
-      {% set address = states('input_text.garbage_collection_address') %}
-      https://prod-telge-web-apimanagement.azure-api.net/api/thorweb/garbagecollection/schedule/{{ address | urlencode }}
-    method: GET
-    headers:
-      Accept: "application/json"
-    value_template: >-
-      {% set today = now().timestamp() %}
-      {% set pickups = value_json | selectattr("containerId", "equalto", "15A") | map(attribute="date") | list %}
-      {% set future_pickups = pickups | map("as_timestamp") | select("ge", today) | list %}
-      {% if future_pickups %}
-        {{ future_pickups | min | timestamp_local }}
-      {% else %}
-        "none"
-      {% endif %}
-    scan_interval: 43200  # Uppdateras var 12:e timme
-    device_class: timestamp
-    json_attributes:
-      - date
-      - containerId
-      - title
+      - name: "Sophämtning Titel"
+        unique_id: sophamtning_titel
+        value_template: >-
+          {% set json_data = value_json %}
+          {% if json_data is not defined or json_data | length == 0 %}
+            none
+          {% else %}
+            {% set today = now().strftime('%Y-%m-%d') | replace("-", "") | int %}
+            {% set future_pickups = json_data 
+              | selectattr("date", "defined") 
+              | map(attribute="date") 
+              | map("string")  
+              | map("truncate", 10, True, "")  
+              | map("replace", "-", "")  
+              | map("int")  
+              | select("ge", today) 
+              | list 
+            %}
+            {% if future_pickups %}
+              {% set future_pickup = future_pickups[0] | string %}
+              {% set formatted_date = future_pickup[:4] + "-" + future_pickup[4:6] + "-" + future_pickup[6:8] %}
+              {% set timestamp_iso = formatted_date + "T00:00:00" %}
+              {% set next_pickup = json_data | selectattr("date", "equalto", timestamp_iso) | list %}
+              {% if next_pickup | length > 0 %}
+                {{ next_pickup[0].title }}
+              {% else %}
+                none
+              {% endif %}
+            {% else %}
+              none
+            {% endif %}
+          {% endif %}
+
+      - name: "Sophämtning Kärl ID"
+        unique_id: sophamtning_karl_id
+        value_template: >-
+          {% set json_data = value_json %}
+          {% if json_data is not defined or json_data | length == 0 %}
+            none
+          {% else %}
+            {% set today = now().strftime('%Y-%m-%d') | replace("-", "") | int %}
+            {% set future_pickups = json_data 
+              | selectattr("date", "defined") 
+              | map(attribute="date") 
+              | map("string")  
+              | map("truncate", 10, True, "")  
+              | map("replace", "-", "")  
+              | map("int")  
+              | select("ge", today) 
+              | list 
+            %}
+            {% if future_pickups %}
+              {% set future_pickup = future_pickups[0] | string %}
+              {% set formatted_date = future_pickup[:4] + "-" + future_pickup[4:6] + "-" + future_pickup[6:8] %}
+              {% set timestamp_iso = formatted_date + "T00:00:00" %}
+              {% set next_pickup = json_data | selectattr("date", "equalto", timestamp_iso) | list %}
+              {% if next_pickup | length > 0 %}
+                {{ next_pickup[0].containerId }}
+              {% else %}
+                none
+              {% endif %}
+            {% else %}
+              none
+            {% endif %}
+          {% endif %}
+
+      - name: "Sophämtning avfallstyp"
+        unique_id: sophamtning_avfallstyp
+        value_template: >-
+          {% set json_data = value_json %}
+          {% if json_data is not defined or json_data | length == 0 %}
+            none
+          {% else %}
+            {% set today = now().strftime('%Y-%m-%d') | replace("-", "") | int %}
+            {% set future_pickups = json_data 
+              | selectattr("date", "defined") 
+              | map(attribute="date") 
+              | map("string")  
+              | map("truncate", 10, True, "")  
+              | map("replace", "-", "")  
+              | map("int")  
+              | select("ge", today) 
+              | list 
+            %}
+            {% if future_pickups %}
+              {% set future_pickup = future_pickups[0] | string %}
+              {% set formatted_date = future_pickup[:4] + "-" + future_pickup[4:6] + "-" + future_pickup[6:8] %}
+              {% set timestamp_iso = formatted_date + "T00:00:00" %}
+              {% set next_pickup = json_data | selectattr("date", "equalto", timestamp_iso) | list %}
+              {% if next_pickup | length > 0 %}
+                {{ next_pickup[0].typeOfWaste }}
+              {% else %}
+                none
+              {% endif %}
+            {% else %}
+              none
+            {% endif %}
+          {% endif %}
+
+
+binary_sensor:
+  - platform: template
+    sensors:
+      sophamtning_idag:
+        friendly_name: "Sophämtning Idag"
+        unique_id: sophamtning_idag
+        device_class: presence
+        value_template: >-
+          {% set today = now().strftime('%Y-%m-%d') %}
+          {% set karl_1_pickup = states('sensor.sophamtning_datum') %}
+
+          {% if karl_1_pickup not in ['unknown', 'none', 'unavailable'] %}
+            {% set karl_1_pickup = (karl_1_pickup | as_datetime | as_local).strftime('%Y-%m-%d') %}
+          {% else %}
+            {% set karl_1_pickup = None %}
+          {% endif %}
+
+          {{ today == karl_1_pickup }}
+          
+          
+template:
+  - sensor:
+      - name: "Sophämtning"
+        unique_id: sophamtning
+        state: "{{ states('sensor.sophamtning_datum') }}"
+        attributes:
+          titel: "{{ states('sensor.sophamtning_titel') }}"
+          karl_id: "{{ states('sensor.sophamtning_karl_id') }}"
+          avfallstyp: "{{ states('sensor.sophamtning_avfallstyp') }}"
+          idag: "{{ states('binary_sensor.sophamtning_idag') }}"
+
+
+
+
